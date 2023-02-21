@@ -1,0 +1,14 @@
+[package]
+name = "cachecutter"
+description = "Trim Nix binary caches"
+version = "1.0.0"
+authors = ["Astro <astro@spaceboyz.net>"]
+edition = "2021"
+license = "GPL-3.0-or-later"
+homepage = "https://github.com/astro/cachecutter"
+repository = "https://github.com/astro/cachecutter.git"
+documentation = "https://docs.rs/cachecutter"
+
+[dependencies]
+clap = "4"
+walkdir = "2"
