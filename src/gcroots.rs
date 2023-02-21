@@ -19,9 +19,7 @@ impl GcRoots {
     }
 
     pub fn scan<P: Into<PathBuf>>(&mut self, gcroot: P) {
-        let gcroot = if let Ok(gcroot) = fs::canonicalize(gcroot.into()) {
-            gcroot
-        } else {
+        let Ok(gcroot) = fs::canonicalize(gcroot.into()) else {
             return;
         };
 
@@ -47,7 +45,7 @@ impl GcRoots {
                     }
                 }
                 Err(e) => {
-                    eprintln!("{}", e);
+                    eprintln!("{e}");
                 }
             }
         }

@@ -34,7 +34,7 @@ fn main() {
         )
         .get_matches();
 
-    let quiet = matches.get_flag("QUIET");
+    let _quiet = matches.get_flag("QUIET");
     let mut gcroots = gcroots::GcRoots::new();
     for gcroot in matches.get_many::<String>("GCROOTS").expect("GCROOTS") {
         gcroots.scan(gcroot);
@@ -45,7 +45,7 @@ fn main() {
             .expect("CACHEDIR")
     );
     let mut scanner = dep_scan::DependencyScanner::new();
-    for path in gcroots.store_paths.into_iter() {
+    for path in gcroots.store_paths {
         scanner.scan(&mut cache, &path);
     }
 
@@ -71,10 +71,8 @@ fn main() {
         .max_depth(1)
     {
         let entry = entry.unwrap();
-        if entry.path().to_str().unwrap().ends_with(".narinfo") {
-            if ! keep_infos.contains(entry.path()) {
-                println!("rm {}", entry.path().display());
-            }
+        if entry.path().to_str().unwrap().ends_with(".narinfo") && ! keep_infos.contains(entry.path()) {
+            println!("rm {}", entry.path().display());
         }
     }
 

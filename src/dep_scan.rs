@@ -35,7 +35,7 @@ impl DependencyScanner {
                 }
             }
             Err(e) => {
-                eprintln!("{:?}: {}", path, e);
+                eprintln!("{path:?}: {e}");
             }
         }
     }

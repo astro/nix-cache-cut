@@ -24,10 +24,10 @@ impl BinaryCache {
             if path.len() >= 43 {
                 self.get_info_by_hash(&path["/nix/store/".len()..43])
             } else {
-                panic!("Invalid store path: {}", path);
+                panic!("Invalid store path: {path}");
             }
         } else {
-            panic!("Invalid store path: {:?}", path);
+            panic!("Invalid store path: {path:?}");
         }
     }
 
@@ -59,12 +59,11 @@ impl Info {
 
         let mut fields = HashMap::new();
         for line in r.lines() {
-            if let line = line? {
-                if let Some(pos) = line.find(": ") {
-                    let key = line[..pos].to_string();
-                    let val = line[pos + 2..].trim_end().to_string();
-                    fields.insert(key, val);
-                }
+            let line = line?;
+            if let Some(pos) = line.find(": ") {
+                let key = line[..pos].to_string();
+                let val = line[pos + 2..].trim_end().to_string();
+                fields.insert(key, val);
             }
         }
 
@@ -76,20 +75,18 @@ impl Info {
 
     pub fn deriver(&self) -> Option<&str> {
         let deriver = self.fields.get("Deriver")
-            .map(|s| s.as_str())
-            .unwrap_or("");
-        if ! deriver.is_empty() {
-            Some(deriver)
-        } else {
+            .map_or("", |s| s.as_str());
+        if deriver.is_empty() {
             None
+        } else {
+            Some(deriver)
         }
     }
 
     pub fn references(&self) -> impl Iterator<Item = &str> {
         self.fields.get("References")
-            .map(|s| s.as_str())
-            .unwrap_or("")
-            .split(" ")
+            .map_or("", |s| s.as_str())
+            .split(' ')
             .filter(|s| ! s.is_empty())
     }
 }
