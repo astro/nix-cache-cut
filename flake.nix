@@ -58,5 +58,13 @@
       overlays.default = (_: prev: {
         nix-cache-cut = pkgLambda prev;
       });
+
+      hydraJobs.nix-cache-cut = builtins.foldl' (result: system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in result // {
+          ${system} = pkgs.lib.hydraJob (pkgLambda pkgs);
+        }
+      ) {} utils.lib.defaultSystems;
     };
 }
