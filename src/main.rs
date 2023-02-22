@@ -58,7 +58,7 @@ fn main() {
     progress_rm_narinfo.tick();
     let progress_rm_nar = progress.add(ProgressBar::new(1));
     progress_rm_nar.set_prefix("Deleting .nar files");
-    progress_rm_nar.set_style(spinner_style.clone());
+    progress_rm_nar.set_style(spinner_style);
     progress_rm_nar.tick();
 
     // Scan garbage-collector roots

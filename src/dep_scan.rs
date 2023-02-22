@@ -32,19 +32,14 @@ impl DependencyScanner {
             }
             self.seen.insert(path.clone());
 
-            match cache.get_info_by_store_path(&path) {
-                Ok(info) => {
-                    for reference in info.references() {
-                        let path = PathBuf::from("/nix/store").join(reference);
-                        self.queue.push_back(path);
-                    }
-                    if let Some(deriver) = info.deriver() {
-                        let path = PathBuf::from("/nix/store").join(deriver);
-                        self.queue.push_back(path);
-                    }
+            if let Ok(info) = cache.get_info_by_store_path(&path) {
+                for reference in info.references() {
+                    let path = PathBuf::from("/nix/store").join(reference);
+                    self.queue.push_back(path);
                 }
-                Err(_) => {
-                    // eprintln!("Cannot scan cache for {path:?}: {e}");
+                if let Some(deriver) = info.deriver() {
+                    let path = PathBuf::from("/nix/store").join(deriver);
+                    self.queue.push_back(path);
                 }
             }
         }
