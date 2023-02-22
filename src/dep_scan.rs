@@ -18,28 +18,25 @@ impl DependencyScanner {
     }
 
     pub fn enqueue(&mut self, path: PathBuf) {
-        self.queue.push_back(path);
+        if ! self.seen.contains(&path) {
+            self.queue.push_back(path.clone());
+            self.seen.insert(path);
+        }
     }
 
     pub fn scan(mut self, cache: &mut BinaryCache, progress: &ProgressBar) -> HashSet<PathBuf> {
         while let Some(path) = self.queue.pop_front() {
-            progress.set_position(self.seen.len() as u64);
-            progress.set_length((self.queue.len() + self.seen.len()) as u64);
-
-            if self.seen.contains(&path) {
-                // skip if scanned before
-                continue;
-            }
-            self.seen.insert(path.clone());
+            progress.set_position((self.seen.len() - self.queue.len()) as u64);
+            progress.set_length(self.seen.len() as u64);
 
             if let Ok(info) = cache.get_info_by_store_path(&path) {
                 for reference in info.references() {
                     let path = PathBuf::from("/nix/store").join(reference);
-                    self.queue.push_back(path);
+                    self.enqueue(path);
                 }
                 if let Some(deriver) = info.deriver() {
                     let path = PathBuf::from("/nix/store").join(deriver);
-                    self.queue.push_back(path);
+                    self.enqueue(path);
                 }
             }
         }

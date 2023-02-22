@@ -36,8 +36,9 @@ fn main() {
                 .help("Garbage collector roots")
         )
         .get_matches();
+    let dry_run = matches.get_flag("DRYRUN");
 
-    let spinner_style = ProgressStyle::with_template("{prefix:.bold.dim} {wide_bar} {msg} {spinner}")
+    let spinner_style = ProgressStyle::with_template("{spinner} {prefix:.bold.dim} {wide_bar:.red} [{pos:.bold.dim}/{len:.bold}] {msg}")
         .unwrap()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
     let progress = MultiProgress::new();
@@ -49,23 +50,26 @@ fn main() {
     progress_scanner.set_style(spinner_style.clone());
     progress_scanner.tick();
     let progress_keep = progress.add(ProgressBar::new(1));
-    progress_keep.set_prefix("Keeping archives");
+    progress_keep.set_prefix("Retaining archives");
     progress_keep.set_style(spinner_style.clone());
     progress_keep.tick();
+    let msg_prefix = if dry_run { "NOT " } else { "" };
     let progress_rm_narinfo = progress.add(ProgressBar::new(1));
-    progress_rm_narinfo.set_prefix("Deleting .narinfo files");
+    progress_rm_narinfo.set_prefix(format!("{}Deleting .narinfo files", msg_prefix));
     progress_rm_narinfo.set_style(spinner_style.clone());
     progress_rm_narinfo.tick();
     let progress_rm_nar = progress.add(ProgressBar::new(1));
-    progress_rm_nar.set_prefix("Deleting .nar files");
+    progress_rm_nar.set_prefix(format!("{}Deleting .nar files", msg_prefix));
     progress_rm_nar.set_style(spinner_style);
     progress_rm_nar.tick();
 
     // Scan garbage-collector roots
     let mut gcroots = gcroots::GcRoots::new();
     for gcroot in matches.get_many::<String>("GCROOTS").expect("GCROOTS") {
-        gcroots.scan(gcroot, &progress_gcroots);
+        gcroots.enqueue(gcroot);
     }
+    let store_paths = gcroots.scan(&progress_gcroots);
+    progress_gcroots.finish();
 
     // Construct cache abstraction
     let mut cache = binary_cache::BinaryCache::new(
@@ -74,10 +78,10 @@ fn main() {
     );
     // Scan gcroots dependencies
     let mut scanner = dep_scan::DependencyScanner::new();
-    gcroots.store_paths.into_iter()
+    store_paths.into_iter()
         .for_each(|path| scanner.enqueue(path));
-    progress_scanner.reset_eta();
     let scanner_seen = scanner.scan(&mut cache, &progress_scanner);
+    progress_scanner.finish();
 
     // Statistics
     let (mut file_size, mut nar_size) = (0usize, 0usize);
@@ -102,10 +106,14 @@ fn main() {
                 format!("{} in {} archive files", HumanBytes(nar_size as u64), HumanBytes(file_size as u64))
             );
         });
+    progress_keep.finish_with_message(
+        format!("{} in {} archive files", HumanBytes(nar_size as u64), HumanBytes(file_size as u64))
+    );
 
-    let dry_run = matches.get_flag("DRYRUN");
     let mut rm_narinfo_size = 0;
+    let mut rm_narinfo_count = 0;
     let mut rm_nar_size = 0;
+    let mut rm_nar_count = 0;
 
     progress_rm_narinfo.set_length(0);
     for entry in WalkDir::new(&cache.path)
@@ -123,16 +131,23 @@ fn main() {
 
             if ! dry_run {
                 match fs::remove_file(entry.path()) {
-                    Ok(()) => {}
+                    Ok(()) => {
+                        rm_narinfo_count += 1;
+                    }
                     Err(e) => {
                         eprintln!("Cannot remove {}: {}", entry.path().display(), e);
                     }
                 }
+            } else {
+                rm_narinfo_count += 1;
             }
         }
 
         progress_rm_narinfo.inc(1);
     }
+    progress_rm_narinfo.finish_with_message(
+        format!("{} in {} NARInfo files", HumanBytes(rm_nar_size), rm_narinfo_count)
+    );
 
     progress_rm_nar.set_length(0);
     for entry in WalkDir::new(cache.path.join("nar"))
@@ -150,16 +165,23 @@ fn main() {
 
             if ! dry_run {
                 match fs::remove_file(entry.path()) {
-                    Ok(()) => {}
+                    Ok(()) => {
+                        rm_nar_count += 1;
+                    }
                     Err(e) => {
                         eprintln!("Cannot remove {}: {}", entry.path().display(), e);
                     }
                 }
+            } else {
+                rm_nar_count += 1;
             }
         }
 
         progress_rm_nar.inc(1);
     }
+    progress_rm_nar.finish_with_message(
+        format!("{} in {} NAR archives", HumanBytes(rm_nar_size), rm_nar_count)
+    );
 
-    progress.clear().unwrap();
+    // progress.clear().unwrap();
 }

@@ -1,5 +1,5 @@
 use std::{
-    collections::HashSet,
+    collections::{HashSet, VecDeque},
     fs,
     path::PathBuf,
 };
@@ -7,51 +7,18 @@ use indicatif::ProgressBar;
 use walkdir::WalkDir;
 
 pub struct GcRoots {
+    queue: VecDeque<PathBuf>,
     seen: HashSet<PathBuf>,
-    pub store_paths: HashSet<PathBuf>,
+    store_paths: HashSet<PathBuf>,
 }
 
 impl GcRoots {
     pub fn new() -> Self {
         GcRoots {
+            queue: VecDeque::with_capacity(1),
             seen: HashSet::new(),
             store_paths: HashSet::new(),
         }
-    }
-
-    pub fn scan<P: Into<PathBuf>>(&mut self, gcroot: P, progress: &ProgressBar) {
-        let Ok(gcroot) = fs::canonicalize(gcroot.into()) else {
-            return;
-        };
-
-        if self.seen.contains(&gcroot) {
-            return;
-        }
-
-        progress.inc_length(1);
-        for entry in WalkDir::new(gcroot) {
-            match entry {
-                Ok(entry) => {
-                    self.seen.insert(entry.path().into());
-
-                    if entry.path_is_symlink() {
-                        let target = fs::read_link(entry.path())
-                            .expect("read_link");
-                        if let Ok(target) = fs::canonicalize(entry.path().join(target)) {
-                            if target.starts_with("/nix/store") {
-                                self.add_store_path(target);
-                            } else {
-                                self.scan(target, progress);
-                            }
-                        }
-                    }
-                }
-                Err(e) => {
-                    eprintln!("{e}");
-                }
-            }
-        }
-        progress.inc(1);
     }
 
     fn add_store_path(&mut self, mut path: PathBuf) {
@@ -61,5 +28,40 @@ impl GcRoots {
             path.pop();
         }
         self.store_paths.insert(path);
+    }
+
+    pub fn enqueue<P: Into<PathBuf>>(&mut self, path: P) {
+        let path = path.into();
+        if path.starts_with("/nix/store") {
+            self.add_store_path(path);
+        } else if ! self.seen.contains(&path) {
+            self.queue.push_back(path.clone());
+            self.seen.insert(path);
+        }
+    }
+
+    pub fn scan(mut self, progress: &ProgressBar) -> HashSet<PathBuf> {
+        while let Some(path) = self.queue.pop_front() {
+            progress.set_position((self.seen.len() - self.queue.len()) as u64);
+            progress.set_length(self.seen.len() as u64);
+
+            for entry in WalkDir::new(path).follow_links(false) {
+                match entry {
+                    Ok(entry) => {
+                        dbg!(entry.path());
+                        if entry.path_is_symlink() {
+                            let target = fs::read_link(entry.path())
+                                .expect("read_link");
+                            self.enqueue(target);
+                        }
+                    }
+                    Err(e) => {
+                        eprintln!("{e}");
+                    }
+                }
+            }
+        }
+
+        self.store_paths
     }
 }
