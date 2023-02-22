@@ -65,6 +65,6 @@
         in result // {
           ${system} = pkgs.lib.hydraJob (pkgLambda pkgs);
         }
-      ) {} utils.lib.defaultSystems;
+      ) {} [ "x86_64-linux" "aarch64-linux" ];
     };
 }
