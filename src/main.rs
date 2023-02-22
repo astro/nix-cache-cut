@@ -21,9 +21,7 @@ fn main() {
         )
         .arg(
             Arg::new("CACHEDIR")
-                // .short('d')
                 .required(true)
-                // .long("cache-directory")
                 .help("Cache directory"),
         )
         .arg(
@@ -52,14 +50,18 @@ fn main() {
     let (mut file_size, mut nar_size) = (0usize, 0usize);
     let mut keep_infos = HashSet::with_capacity(scanner.seen.len());
     let mut keep_archives = HashSet::with_capacity(scanner.seen.len());
-    for path in &scanner.seen {
-        if let Ok(info) = cache.get_info_by_store_path(path) {
+    let cache_path = cache.path.clone();
+    scanner.seen.into_iter()
+        .filter_map(|path| {
+            cache.get_info_by_store_path(&path)
+                .ok()
+        })
+        .for_each(|info| {
             keep_infos.insert(info.path);
-            keep_archives.insert(cache.path.join(info.fields.get("URL").unwrap()));
+            keep_archives.insert(cache_path.join(info.fields.get("URL").unwrap()));
             file_size += info.fields.get("FileSize").unwrap().parse::<usize>().unwrap();
             nar_size += info.fields.get("NarSize").unwrap().parse::<usize>().unwrap();
-        }
-    }
+        });
     dbg!(file_size);
     dbg!(nar_size);
 
