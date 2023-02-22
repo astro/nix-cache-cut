@@ -8,6 +8,7 @@ mod binary_cache;
 mod dep_scan;
 
 fn main() {
+    // Define command-line arguments
     let matches = Command::new("cachecutter")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Astro <astro@spaceboyz.net>")
@@ -33,21 +34,27 @@ fn main() {
         .get_matches();
 
     let _quiet = matches.get_flag("QUIET");
+
+    // Scan garbage-collector roots
     let mut gcroots = gcroots::GcRoots::new();
     for gcroot in matches.get_many::<String>("GCROOTS").expect("GCROOTS") {
         gcroots.scan(gcroot);
     }
 
+    // Construct cache abstraction
     let mut cache = binary_cache::BinaryCache::new(
         matches.get_one::<String>("CACHEDIR")
             .expect("CACHEDIR")
     );
+    // Scan gcroots dependencies
     let mut scanner = dep_scan::DependencyScanner::new();
-    for path in gcroots.store_paths {
-        scanner.scan(&mut cache, &path);
+    for path in gcroots.store_paths.into_iter() {
+        scanner.scan(&mut cache, path);
     }
 
+    // Statistics
     let (mut file_size, mut nar_size) = (0usize, 0usize);
+    // Set of files to keep
     let mut keep_infos = HashSet::with_capacity(scanner.seen.len());
     let mut keep_archives = HashSet::with_capacity(scanner.seen.len());
     let cache_path = cache.path.clone();
@@ -62,11 +69,9 @@ fn main() {
             file_size += info.fields.get("FileSize").unwrap().parse::<usize>().unwrap();
             nar_size += info.fields.get("NarSize").unwrap().parse::<usize>().unwrap();
         });
+
     dbg!(file_size);
     dbg!(nar_size);
-
-    // dbg!(keep_infos);
-    // dbg!(keep_archives);
 
     for entry in WalkDir::new(&cache.path)
         .min_depth(1)

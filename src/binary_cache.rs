@@ -18,7 +18,6 @@ impl BinaryCache {
     }
 
     pub fn get_info_by_store_path(&mut self, path: &Path) -> Result<Info, IoError> {
-        dbg!(path);
         if path.starts_with("/nix/store") {
             let path = path.to_str().unwrap();
             if path.len() >= 43 {
@@ -33,7 +32,6 @@ impl BinaryCache {
 
     pub fn get_info_by_hash(&mut self, hash: &str) -> Result<Info, IoError> {
         let path: PathBuf = format!("{}/{}.narinfo", self.path.display(), hash).into();
-        dbg!(&path);
         if let Some(info) = self.cached_infos.get(&path) {
             // cache hit
             return Ok(info.clone());

@@ -1,4 +1,4 @@
-use std::{collections::HashSet, path::{Path, PathBuf}};
+use std::{collections::{HashSet, VecDeque}, path::PathBuf};
 
 use crate::binary_cache::BinaryCache;
 
@@ -13,29 +13,32 @@ impl DependencyScanner {
         }
     }
 
-    // TODO: should work a queue, not recurse
-    pub fn scan(&mut self, cache: &mut BinaryCache, path: &Path) {
-        if self.seen.contains(path) {
-            return;
-        }
-        self.seen.insert(path.into());
+    pub fn scan(&mut self, cache: &mut BinaryCache, path: PathBuf) {
+        let mut queue = VecDeque::with_capacity(1);
+        queue.push_back(path);
 
-        match cache.get_info_by_store_path(path) {
-            Ok(info) => {
-                dbg!(&info);
-                for reference in info.references() {
-                    let path = PathBuf::from("/nix/store").join(reference);
-                    dbg!(&path);
-                    self.scan(cache, &path);
-                }
-                if let Some(deriver) = info.deriver() {
-                    let path = PathBuf::from("/nix/store").join(deriver);
-                    dbg!(&path);
-                    self.scan(cache, &path);
-                }
+        while let Some(path) = queue.pop_front() {
+            if self.seen.contains(&path) {
+                // skip if scanned before
+                continue;
             }
-            Err(e) => {
-                eprintln!("{path:?}: {e}");
+            self.seen.insert(path.clone());
+
+            match cache.get_info_by_store_path(&path) {
+                Ok(info) => {
+                    dbg!(&info);
+                    for reference in info.references() {
+                        let path = PathBuf::from("/nix/store").join(reference);
+                        queue.push_back(path);
+                    }
+                    if let Some(deriver) = info.deriver() {
+                        let path = PathBuf::from("/nix/store").join(deriver);
+                        queue.push_back(path);
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Cannot scan cache for {path:?}: {e}");
+                }
             }
         }
     }
