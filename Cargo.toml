@@ -1,6 +1,6 @@
 [package]
-name = "cachecutter"
-description = "Trim Nix binary caches"
+name = "nix-cache-trim"
+description = "Trim Nix binary caches according to gcroots"
 version = "1.0.0"
 authors = ["Astro <astro@spaceboyz.net>"]
 edition = "2021"
@@ -12,3 +12,4 @@ documentation = "https://docs.rs/cachecutter"
 [dependencies]
 clap = "4"
 walkdir = "2"
+indicatif = "0.17"

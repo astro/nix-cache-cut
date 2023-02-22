@@ -3,6 +3,7 @@ use std::{
     fs,
     path::PathBuf,
 };
+use indicatif::ProgressBar;
 use walkdir::WalkDir;
 
 pub struct GcRoots {
@@ -18,7 +19,7 @@ impl GcRoots {
         }
     }
 
-    pub fn scan<P: Into<PathBuf>>(&mut self, gcroot: P) {
+    pub fn scan<P: Into<PathBuf>>(&mut self, gcroot: P, progress: &ProgressBar) {
         let Ok(gcroot) = fs::canonicalize(gcroot.into()) else {
             return;
         };
@@ -27,6 +28,7 @@ impl GcRoots {
             return;
         }
 
+        progress.inc_length(1);
         for entry in WalkDir::new(gcroot) {
             match entry {
                 Ok(entry) => {
@@ -39,7 +41,7 @@ impl GcRoots {
                             if target.starts_with("/nix/store") {
                                 self.add_store_path(target);
                             } else {
-                                self.scan(target);
+                                self.scan(target, progress);
                             }
                         }
                     }
@@ -49,6 +51,7 @@ impl GcRoots {
                 }
             }
         }
+        progress.inc(1);
     }
 
     fn add_store_path(&mut self, mut path: PathBuf) {
@@ -57,7 +60,6 @@ impl GcRoots {
         for _ in 4..components {
             path.pop();
         }
-        dbg!(&path);
         self.store_paths.insert(path);
     }
 }
