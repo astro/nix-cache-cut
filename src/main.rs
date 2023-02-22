@@ -107,6 +107,8 @@ fn main() {
                 format!("{} in {} archive files", HumanBytes(nar_size as u64), HumanBytes(file_size as u64))
             );
         });
+    // free memory early
+    drop(cache);
     progress_keep.finish_with_message(
         format!("{} in {} archive files", HumanBytes(nar_size as u64), HumanBytes(file_size as u64))
     );
@@ -115,7 +117,7 @@ fn main() {
     let mut rm_nar_size = 0;
 
     progress_rm_narinfo.set_length(0);
-    for entry in WalkDir::new(&cache.path)
+    for entry in WalkDir::new(&cache_path)
         .min_depth(1)
         .max_depth(1)
     {
@@ -142,12 +144,14 @@ fn main() {
             progress_rm_narinfo.inc(1);
         }
     }
+    // free memory early
+    drop(keep_infos);
     progress_rm_narinfo.finish_with_message(
         format!("{}", HumanBytes(rm_narinfo_size))
     );
 
     progress_rm_nar.set_length(0);
-    for entry in WalkDir::new(cache.path.join("nar"))
+    for entry in WalkDir::new(cache_path.join("nar"))
         .min_depth(1)
         .max_depth(1)
     {
@@ -174,6 +178,8 @@ fn main() {
             progress_rm_nar.inc(1);
         }
     }
+    // free memory early
+    drop(keep_archives);
     progress_rm_nar.finish_with_message(
         format!("{}", HumanBytes(rm_nar_size))
     );
