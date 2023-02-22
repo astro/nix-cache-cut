@@ -12,7 +12,7 @@ cache-gc](https://github.com/lheckemann/cache-gc).
 
 ```console
 $ nix run github:astro/nix-cache-cut -- --help
-Find dead code in .nix files
+Trim Nix binary caches according to GC roots
 
 Usage: nix-cache-cut [OPTIONS] <CACHEDIR> [GCROOTS]...
 
