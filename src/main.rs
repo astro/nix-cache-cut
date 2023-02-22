@@ -38,29 +38,30 @@ fn main() {
         .get_matches();
     let dry_run = matches.get_flag("DRYRUN");
 
-    let spinner_style = ProgressStyle::with_template("{spinner} {prefix:.bold.dim} {wide_bar:.red} [{pos:.bold.dim}/{len:.bold}] {msg}")
+    let make_spinner = |color| ProgressStyle::with_template(
+        &"{spinner} {prefix:.bold.dim} {wide_bar:.COLOR} [{pos:.bold.dim}/{len:.bold}] {msg}".replace("COLOR", color))
         .unwrap()
         .tick_chars("⠁⠂⠄⡀⢀⠠⠐⠈ ");
     let progress = MultiProgress::new();
     let progress_gcroots = progress.add(ProgressBar::new(0));
     progress_gcroots.set_prefix("Scanning GCROOTS");
-    progress_gcroots.set_style(spinner_style.clone());
+    progress_gcroots.set_style(make_spinner("green.dim"));
     let progress_scanner = progress.add(ProgressBar::new(1));
     progress_scanner.set_prefix("Scanning dependencies");
-    progress_scanner.set_style(spinner_style.clone());
+    progress_scanner.set_style(make_spinner("green"));
     progress_scanner.tick();
     let progress_keep = progress.add(ProgressBar::new(1));
     progress_keep.set_prefix("Retaining archives");
-    progress_keep.set_style(spinner_style.clone());
+    progress_keep.set_style(make_spinner("yellow"));
     progress_keep.tick();
     let msg_prefix = if dry_run { "NOT " } else { "" };
     let progress_rm_narinfo = progress.add(ProgressBar::new(1));
     progress_rm_narinfo.set_prefix(format!("{}Deleting .narinfo files", msg_prefix));
-    progress_rm_narinfo.set_style(spinner_style.clone());
+    progress_rm_narinfo.set_style(make_spinner("red"));
     progress_rm_narinfo.tick();
     let progress_rm_nar = progress.add(ProgressBar::new(1));
     progress_rm_nar.set_prefix(format!("{}Deleting .nar files", msg_prefix));
-    progress_rm_nar.set_style(spinner_style);
+    progress_rm_nar.set_style(make_spinner("red.dim"));
     progress_rm_nar.tick();
 
     // Scan garbage-collector roots
@@ -111,42 +112,38 @@ fn main() {
     );
 
     let mut rm_narinfo_size = 0;
-    let mut rm_narinfo_count = 0;
     let mut rm_nar_size = 0;
-    let mut rm_nar_count = 0;
 
     progress_rm_narinfo.set_length(0);
     for entry in WalkDir::new(&cache.path)
         .min_depth(1)
         .max_depth(1)
     {
-        progress_rm_narinfo.inc_length(1);
-
         let entry = entry.unwrap();
         if entry.path().to_str().unwrap().ends_with(".narinfo") && ! keep_infos.contains(entry.path()) {
+            progress_rm_narinfo.inc_length(1);
+
             if let Ok(meta) = fs::metadata(entry.path()) {
                 rm_narinfo_size += meta.len();
                 progress_rm_narinfo.set_message(format!("{}", HumanBytes(rm_narinfo_size)));
+            } else {
+                eprintln!("Cannot stat {}", entry.path().display());
             }
 
             if ! dry_run {
                 match fs::remove_file(entry.path()) {
-                    Ok(()) => {
-                        rm_narinfo_count += 1;
-                    }
+                    Ok(()) => {}
                     Err(e) => {
                         eprintln!("Cannot remove {}: {}", entry.path().display(), e);
                     }
                 }
-            } else {
-                rm_narinfo_count += 1;
             }
-        }
 
-        progress_rm_narinfo.inc(1);
+            progress_rm_narinfo.inc(1);
+        }
     }
     progress_rm_narinfo.finish_with_message(
-        format!("{} in {} NARInfo files", HumanBytes(rm_nar_size), rm_narinfo_count)
+        format!("{}", HumanBytes(rm_nar_size))
     );
 
     progress_rm_nar.set_length(0);
@@ -154,33 +151,31 @@ fn main() {
         .min_depth(1)
         .max_depth(1)
     {
-        progress_rm_nar.inc_length(1);
-
         let entry = entry.unwrap();
         if ! keep_archives.contains(entry.path()) {
+            progress_rm_nar.inc_length(1);
+
             if let Ok(meta) = fs::metadata(entry.path()) {
                 rm_nar_size += meta.len();
                 progress_rm_nar.set_message(format!("{}", HumanBytes(rm_nar_size)));
+            } else {
+                eprintln!("Cannot stat {}", entry.path().display());
             }
 
             if ! dry_run {
                 match fs::remove_file(entry.path()) {
-                    Ok(()) => {
-                        rm_nar_count += 1;
-                    }
+                    Ok(()) => {}
                     Err(e) => {
                         eprintln!("Cannot remove {}: {}", entry.path().display(), e);
                     }
                 }
-            } else {
-                rm_nar_count += 1;
             }
-        }
 
-        progress_rm_nar.inc(1);
+            progress_rm_nar.inc(1);
+        }
     }
     progress_rm_nar.finish_with_message(
-        format!("{} in {} NAR archives", HumanBytes(rm_nar_size), rm_nar_count)
+        format!("{}", HumanBytes(rm_nar_size))
     );
 
     // progress.clear().unwrap();
