@@ -56,11 +56,11 @@ fn main() {
     progress_keep.tick();
     let msg_prefix = if dry_run { "NOT " } else { "" };
     let progress_rm_narinfo = progress.add(ProgressBar::new(1));
-    progress_rm_narinfo.set_prefix(format!("{}Deleting .narinfo files", msg_prefix));
+    progress_rm_narinfo.set_prefix(format!("{msg_prefix}Deleting .narinfo files"));
     progress_rm_narinfo.set_style(make_spinner("red"));
     progress_rm_narinfo.tick();
     let progress_rm_nar = progress.add(ProgressBar::new(1));
-    progress_rm_nar.set_prefix(format!("{}Deleting .nar files", msg_prefix));
+    progress_rm_nar.set_prefix(format!("{msg_prefix}Deleting .nar files"));
     progress_rm_nar.set_style(make_spinner("red.dim"));
     progress_rm_nar.tick();
 

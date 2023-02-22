@@ -45,13 +45,14 @@ impl GcRoots {
             progress.set_position((self.seen.len() - self.queue.len()) as u64);
             progress.set_length(self.seen.len() as u64);
 
-            for entry in WalkDir::new(path).follow_links(false) {
-                if let Ok(entry) = entry {
-                    if entry.path_is_symlink() {
-                        let target = fs::read_link(entry.path())
-                            .expect("read_link");
-                        self.enqueue(target);
-                    }
+            for entry in WalkDir::new(path).follow_links(false)
+                .into_iter()
+                .flatten()
+            {
+                if entry.path_is_symlink() {
+                    let target = fs::read_link(entry.path())
+                        .expect("read_link");
+                    self.enqueue(target);
                 }
             }
         }
