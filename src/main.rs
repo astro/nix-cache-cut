@@ -143,7 +143,7 @@ fn main() {
         }
     }
     progress_rm_narinfo.finish_with_message(
-        format!("{}", HumanBytes(rm_nar_size))
+        format!("{}", HumanBytes(rm_narinfo_size))
     );
 
     progress_rm_nar.set_length(0);
