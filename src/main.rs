@@ -13,7 +13,7 @@ mod dep_scan;
 
 fn main() {
     // Define command-line arguments
-    let matches = Command::new("cachecutter")
+    let matches = Command::new("nix-cache-cut")
         .version(env!("CARGO_PKG_VERSION"))
         .author("Astro <astro@spaceboyz.net>")
         .about("Find dead code in .nix files")

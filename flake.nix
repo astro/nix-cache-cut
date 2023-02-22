@@ -11,12 +11,12 @@
   outputs = { self, nixpkgs, utils, naersk }:
     let
       inherit (nixpkgs) lib;
-      cachecutterLambda = pkgs:
+      pkgLambda = pkgs:
         let
           naersk-lib = pkgs.callPackage naersk { };
         in
         naersk-lib.buildPackage {
-          pname = "cachecutter";
+          pname = "nix-cache-cut";
           root = ./.;
           checkInputs = [ pkgs.rustPackages.clippy ];
           doCheck = true;
@@ -41,8 +41,8 @@
         in
         {
           packages = {
-            default = self.packages."${system}".cachecutter;
-            cachecutter = cachecutterLambda pkgs;
+            default = self.packages."${system}".nix-cache-cut;
+            nix-cache-cut = pkgLambda pkgs;
           };
 
           apps.default = utils.lib.mkApp {
@@ -56,7 +56,7 @@
         })
     // {
       overlays.default = (_: prev: {
-        cachecutter = cachecutterLambda prev;
+        nix-cache-cut = pkgLambda prev;
       });
     };
 }
