@@ -46,17 +46,11 @@ impl GcRoots {
             progress.set_length(self.seen.len() as u64);
 
             for entry in WalkDir::new(path).follow_links(false) {
-                match entry {
-                    Ok(entry) => {
-                        dbg!(entry.path());
-                        if entry.path_is_symlink() {
-                            let target = fs::read_link(entry.path())
-                                .expect("read_link");
-                            self.enqueue(target);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("{e}");
+                if let Ok(entry) = entry {
+                    if entry.path_is_symlink() {
+                        let target = fs::read_link(entry.path())
+                            .expect("read_link");
+                        self.enqueue(target);
                     }
                 }
             }
